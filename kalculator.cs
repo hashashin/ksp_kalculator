@@ -1,7 +1,7 @@
 ﻿// -------------------------------------------------------------------------------------------------
 // kalculator.cs 0.1.alpha
 //
-// Based on public domain code by: Juan Sebastian Munoz Arango
+// Based on public domain code by: Juan Sebastian Muñoz Arango
 // http://www.pencilsquaregames.com/2013/10/calculator-for-unity3d/
 // naruse@gmail.com
 // 2013
@@ -86,15 +86,15 @@ namespace kalculator
 
             if (_visible)
             {
-                GUI.FocusControl("calculator");
-                InputLockManager.SetControlLock(BLOCK_ALL_CONTROLS, "calculator");
+                GUI.FocusControl("kalculator");
+                InputLockManager.SetControlLock(BLOCK_ALL_CONTROLS, "kalculator");
                 GetInputFromCalc();
             }
             else
             {
-                if (InputLockManager.GetControlLock("calculator") == (BLOCK_ALL_CONTROLS))
+                if (InputLockManager.GetControlLock("kalculator") == (BLOCK_ALL_CONTROLS))
                 { 
-                    InputLockManager.RemoveControlLock("calculator"); 
+                    InputLockManager.RemoveControlLock("kalculator"); 
                 }
             }                      
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(_keybind))
@@ -120,7 +120,7 @@ namespace kalculator
 #endif          
             if (ToolbarButtonWrapper.ToolbarManagerPresent)
             {
-                _button = ToolbarButtonWrapper.TryWrapToolbarButton("calculator", "toggle");
+                _button = ToolbarButtonWrapper.TryWrapToolbarButton("kalculator", "toggle");
                 if (_visible)
                 {
                     _button.TexturePath = _btexture_on;
@@ -138,13 +138,13 @@ namespace kalculator
             }
             if (_visible)
             {
-                _calcsize = GUI.Window(GUIUtility.GetControlID(0, FocusType.Passive), _calcsize, CalcWindow, "Calculator");
+                _calcsize = GUI.Window(GUIUtility.GetControlID(0, FocusType.Passive), _calcsize, CalcWindow, "Kalculator");
             }
         }
 
         void CalcWindow(int windowID)
         {
-            GUI.SetNextControlName("calculator");
+            GUI.SetNextControlName("kalculator");
             GUI.Box(new Rect(10, 20, _calcsize.width - 20, 43), "");
             int tmpSize = GUI.skin.GetStyle("Label").fontSize;
             GUI.skin.GetStyle("TextField").fontSize = _displayfontsize;
@@ -516,7 +516,7 @@ namespace kalculator
         
         private void LoadSettings()
         {
-            KSPLog.print("[calculator.dll] Loading Config...");
+            KSPLog.print("[kalculator.dll] Loading Config...");
             KSP.IO.PluginConfiguration configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
             configfile.load();
 
@@ -524,12 +524,12 @@ namespace kalculator
             _keybind = configfile.GetValue<string>("keybind");
             _versionlastrun = configfile.GetValue<string>("version");
             
-            KSPLog.print("[calculator.dll] Config Loaded Successfully");
+            KSPLog.print("[kalculator.dll] Config Loaded Successfully");
         }
 
         private void SaveSettings()
         {
-            KSPLog.print("[calculator.dll] Saving Config...");
+            KSPLog.print("[kalculator.dll] Saving Config...");
             KSP.IO.PluginConfiguration configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
 
             configfile.SetValue("windowpos", _calcsize);
@@ -537,7 +537,7 @@ namespace kalculator
             configfile.SetValue("version", _version);
             
             configfile.save();
-            KSPLog.print("[calculator.dll] Config Saved ");
+            KSPLog.print("[kalculator.dll] Config Saved ");
         }
         
         private void CheckDefaults()
@@ -567,7 +567,7 @@ namespace kalculator
         private void VersionCheck()
         {
             _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            KSPLog.print("calculator.dll version: " + _version);
+            KSPLog.print("kalculator.dll version: " + _version);
             if ((_version != _versionlastrun) && (KSP.IO.File.Exists<Kalculator>("config.xml")))
             {
                 KSP.IO.File.Delete<Kalculator>("config.xml");
