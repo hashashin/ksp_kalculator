@@ -27,7 +27,7 @@ using System;
 namespace kalculator
 {
 
-    public static class MathHelper
+    internal static class MathHelper
     {
         // Secant 
         public static double Sec(double x)
