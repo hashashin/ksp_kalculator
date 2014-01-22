@@ -57,7 +57,7 @@ namespace kalculator
         private string _btexture_off = "Kalculator/Textures/icon_off";
         private const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS;
         
-
+#if DEBUG
         private string GetCalcInternalsInfo()
         {
             string info = "";
@@ -72,7 +72,7 @@ namespace kalculator
 
             return info;
         }
-
+#endif
         void Awake()
         {
             LoadVersion();
