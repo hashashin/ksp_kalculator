@@ -1,5 +1,5 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// kalculator.cs 0.1
+// kalculator.cs 0.1.1
 //
 // Based on public domain code by: Juan Sebastian Muñoz Arango
 // http://www.pencilsquaregames.com/2013/10/calculator-for-unity3d/
@@ -81,6 +81,21 @@ namespace kalculator
             CheckDefaults();
         }
 
+        void Start()
+        {
+            if (ToolbarButtonWrapper.ToolbarManagerPresent)
+            {
+                _button = ToolbarButtonWrapper.TryWrapToolbarButton("kalculator", "toggle");
+                _button.TexturePath = _btexture_off;
+                _button.ToolTip = _tooltipoff;
+                
+                _button.AddButtonClickHandler((e) =>
+                {
+                    Toggle();
+                });
+            }
+        }
+
         void Update()
         {
 
@@ -118,24 +133,6 @@ namespace kalculator
 #if DEBUG
             GUILayout.Label(GetCalcInternalsInfo());//DEBUG.
 #endif          
-            if (ToolbarButtonWrapper.ToolbarManagerPresent)
-            {
-                _button = ToolbarButtonWrapper.TryWrapToolbarButton("kalculator", "toggle");
-                if (_visible)
-                {
-                    _button.TexturePath = _btexture_on;
-                    _button.ToolTip = _tooltipon;
-                }
-                else
-                {
-                    _button.TexturePath = _btexture_off;
-                    _button.ToolTip = _tooltipoff;
-                }
-                _button.AddButtonClickHandler((e) =>
-                {
-                    Toggle();
-                });
-            }
             if (_visible)
             {
                 _calcsize = GUI.Window(GUIUtility.GetControlID(0, FocusType.Passive), _calcsize, CalcWindow, "Kalculator");
@@ -557,10 +554,14 @@ namespace kalculator
             if (_visible == true)
             {
                 _visible = false;
+                _button.TexturePath = _btexture_off;
+                _button.ToolTip = _tooltipoff;
             }
             else
             {
                 _visible = true;
+                _button.TexturePath = _btexture_on;
+                _button.ToolTip = _tooltipon;
             }
         }
 
