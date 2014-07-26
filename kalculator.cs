@@ -39,24 +39,24 @@ namespace kalculator
     {
         private Rect _calcsize;
         private string _keybind;
-        private float[] _registers = new float[2];
+        private readonly float[] _registers = new float[2];
         private string _currentnumber = "0";
-        private int _displayfontsize = 24;
-        private int _opfontsize = 15;
+        private const int _displayfontsize = 24;
+        private const int _opfontsize = 15;
         private string _optoperform = "";
-        private int _maxdigits = 16;
+        private const int _maxdigits = 16;
         private bool _isfirst = true;
-        private bool _clearscreen = false;
-        private bool _visible = false;
+        private bool _clearscreen;
+        private bool _visible;
         private string _version;
         private string _versionlastrun;
-        private ToolbarButtonWrapper _button;
-        private string _tooltipon = "Hide Kalculator";
-        private string _tooltipoff = "Show Kalculator";
-        private string _btexture_on = "Kalculator/Textures/icon_on";
-        private string _btexture_off = "Kalculator/Textures/icon_off";
+        private IButton _button;
+        private const string _tooltipOn = "Hide Kalculator";
+        private const string _tooltipOff = "Show Kalculator";
+        private const string _btextureOn = "Kalculator/Textures/icon_on";
+        private const string _btextureOff = "Kalculator/Textures/icon_off";
         private const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS;
-        
+
 #if DEBUG
         private string GetCalcInternalsInfo()
         {
@@ -78,22 +78,16 @@ namespace kalculator
             LoadVersion();
             VersionCheck();
             LoadSettings();
-            CheckDefaults();
         }
 
         void Start()
         {
-            if (ToolbarButtonWrapper.ToolbarManagerPresent)
-            {
-                _button = ToolbarButtonWrapper.TryWrapToolbarButton("kalculator", "toggle");
-                _button.TexturePath = _btexture_off;
-                _button.ToolTip = _tooltipoff;
-                
-                _button.AddButtonClickHandler((e) =>
-                {
-                    Toggle();
-                });
-            }
+            if (!ToolbarManager.ToolbarAvailable) return;
+            _button = ToolbarManager.Instance.add("kalculator", "toggle");
+            _button.TexturePath = _btextureOff;
+            _button.ToolTip = _tooltipOff;
+            _button.OnClick += e => Toggle();
+
         }
 
         void Update()
@@ -108,10 +102,10 @@ namespace kalculator
             else
             {
                 if (InputLockManager.GetControlLock("kalculator") == (BLOCK_ALL_CONTROLS))
-                { 
-                    InputLockManager.RemoveControlLock("kalculator"); 
+                {
+                    InputLockManager.RemoveControlLock("kalculator");
                 }
-            }                      
+            }
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(_keybind))
             {
                 Toggle();
@@ -126,13 +120,13 @@ namespace kalculator
                 _button.Destroy();
             }
         }
-                
+
 
         void OnGUI()
         {
 #if DEBUG
             GUILayout.Label(GetCalcInternalsInfo());//DEBUG.
-#endif          
+#endif
             if (_visible)
             {
                 _calcsize = GUI.Window(GUIUtility.GetControlID(0, FocusType.Passive), _calcsize, CalcWindow, "Kalculator");
@@ -232,10 +226,10 @@ namespace kalculator
                 OperatorPressed("sec");
             if (GUI.Button(new Rect(165, 320, 47, 30), "csc"))
                 OperatorPressed("csc");
-            
+
             if (GUI.Button(new Rect(8, 320, 47, 30), "!"))
                 OperatorPressed("!");
-            
+
             if (GUI.Button(new Rect(8, 176, 47, 30), "1"))
                 AppendNumber("1");
             if (GUI.Button(new Rect(61, 176, 47, 30), "2"))
@@ -443,7 +437,7 @@ namespace kalculator
                 default:
                     Debug.LogError("Unknown operation: " + _optoperform);
                     break;
-                    
+
             }
             StoreCurrentNumberInReg(0);
             _isfirst = true;
@@ -458,7 +452,7 @@ namespace kalculator
         private void AppendNumber(string s)
         {
             if ((_currentnumber == "0") || _clearscreen)
-                _currentnumber = (s == ".") ? "0." : s;
+                _currentnumber = s == "." ? "0." : s;
             else
                 if (_currentnumber.Length < _maxdigits)
                     _currentnumber += s;
@@ -510,65 +504,53 @@ namespace kalculator
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
                 PerformOperation();
         }
-        
+
         private void LoadSettings()
         {
             KSPLog.print("[kalculator.dll] Loading Config...");
-            KSP.IO.PluginConfiguration configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
-            configfile.load();
+            KSP.IO.PluginConfiguration _configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
+            _configfile.load();
 
-            _calcsize = configfile.GetValue<Rect>("windowpos");
-            _keybind = configfile.GetValue<string>("keybind");
-            _versionlastrun = configfile.GetValue<string>("version");
-            
+            _calcsize = _configfile.GetValue("windowpos", new Rect(360, 20, 308, 358));
+            _keybind = _configfile.GetValue("keybind", "k");
+            _versionlastrun = _configfile.GetValue<string>("version");
+
             KSPLog.print("[kalculator.dll] Config Loaded Successfully");
         }
 
         private void SaveSettings()
         {
             KSPLog.print("[kalculator.dll] Saving Config...");
-            KSP.IO.PluginConfiguration configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
+            KSP.IO.PluginConfiguration _configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
 
-            configfile.SetValue("windowpos", _calcsize);
-            configfile.SetValue("keybind", _keybind);
-            configfile.SetValue("version", _version);
-            
-            configfile.save();
-            KSPLog.print("[kalculator.dll] Config Saved ");
+            _configfile.SetValue("windowpos", _calcsize);
+            _configfile.SetValue("keybind", _keybind);
+            _configfile.SetValue("version", _version);
+
+            _configfile.save();
+            print("[kalculator.dll] Config Saved ");
         }
-        
-        private void CheckDefaults()
-        {
-            if (_calcsize == new Rect(0, 0, 0, 0))
-            {
-                _calcsize = new Rect(360, 20, 308, 358);
-            }
-            if (_keybind == null)
-            {
-                _keybind = "k";
-            }
-        }
-        
+
         private void Toggle()
         {
             if (_visible == true)
             {
                 _visible = false;
-                _button.TexturePath = _btexture_off;
-                _button.ToolTip = _tooltipoff;
+                _button.TexturePath = _btextureOff;
+                _button.ToolTip = _tooltipOff;
             }
             else
             {
                 _visible = true;
-                _button.TexturePath = _btexture_on;
-                _button.ToolTip = _tooltipon;
+                _button.TexturePath = _btextureOn;
+                _button.ToolTip = _tooltipOn;
             }
         }
 
         private void VersionCheck()
         {
             _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            KSPLog.print("kalculator.dll version: " + _version);
+            print("kalculator.dll version: " + _version);
             if ((_version != _versionlastrun) && (KSP.IO.File.Exists<Kalculator>("config.xml")))
             {
                 KSP.IO.File.Delete<Kalculator>("config.xml");
