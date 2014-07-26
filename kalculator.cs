@@ -1,5 +1,5 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// kalculator.cs 0.1.1
+// kalculator.cs 0.2
 //
 // Based on public domain code by: Juan Sebastian Muñoz Arango
 // http://www.pencilsquaregames.com/2013/10/calculator-for-unity3d/
