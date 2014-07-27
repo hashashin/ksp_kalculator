@@ -1,5 +1,5 @@
 ﻿// -------------------------------------------------------------------------------------------------
-// kalculator.cs 0.1.1
+// kalculator.cs 0.2
 //
 // Based on public domain code by: Juan Sebastian Muñoz Arango
 // http://www.pencilsquaregames.com/2013/10/calculator-for-unity3d/
@@ -39,24 +39,26 @@ namespace kalculator
     {
         private Rect _calcsize;
         private string _keybind;
-        private float[] _registers = new float[2];
+        private readonly float[] _registers = new float[2];
         private string _currentnumber = "0";
-        private int _displayfontsize = 24;
-        private int _opfontsize = 15;
+        private string _mem = "0";
+        private const int _displayfontsize = 24;
+        private const int _opfontsize = 15;
         private string _optoperform = "";
-        private int _maxdigits = 16;
+        private const int _maxdigits = 16;
         private bool _isfirst = true;
-        private bool _clearscreen = false;
-        private bool _visible = false;
+        private bool _clearscreen;
+        private bool _visible;
         private string _version;
         private string _versionlastrun;
-        private ToolbarButtonWrapper _button;
-        private string _tooltipon = "Hide Kalculator";
-        private string _tooltipoff = "Show Kalculator";
-        private string _btexture_on = "Kalculator/Textures/icon_on";
-        private string _btexture_off = "Kalculator/Textures/icon_off";
+        private IButton _button;
+        private bool _useKspSkin;
+        private const string _tooltipOn = "Hide Kalculator";
+        private const string _tooltipOff = "Show Kalculator";
+        private const string _btextureOn = "Kalculator/Textures/icon_on";
+        private const string _btextureOff = "Kalculator/Textures/icon_off";
         private const ControlTypes BLOCK_ALL_CONTROLS = ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.ACTIONS_ALL | ControlTypes.EVA_INPUT | ControlTypes.TIMEWARP | ControlTypes.MISC | ControlTypes.GROUPS_ALL | ControlTypes.CUSTOM_ACTION_GROUPS;
-        
+
 #if DEBUG
         private string GetCalcInternalsInfo()
         {
@@ -68,7 +70,8 @@ namespace kalculator
                 info += "Reg[" + i + "] <= " + _registers[i] + "\n";
             }
             info += "Current op: " + _optoperform + "\n";
-            info += "Register to use: " + (_isfirst ? "0" : "1");
+            info += "Register to use: " + (_isfirst ? "0" : "1") + "\n";
+            info += "MR: " + _mem;
 
             return info;
         }
@@ -78,22 +81,16 @@ namespace kalculator
             LoadVersion();
             VersionCheck();
             LoadSettings();
-            CheckDefaults();
         }
 
         void Start()
         {
-            if (ToolbarButtonWrapper.ToolbarManagerPresent)
-            {
-                _button = ToolbarButtonWrapper.TryWrapToolbarButton("kalculator", "toggle");
-                _button.TexturePath = _btexture_off;
-                _button.ToolTip = _tooltipoff;
-                
-                _button.AddButtonClickHandler((e) =>
-                {
-                    Toggle();
-                });
-            }
+            if (!ToolbarManager.ToolbarAvailable) return;
+            _button = ToolbarManager.Instance.add("kalculator", "toggle");
+            _button.TexturePath = _btextureOff;
+            _button.ToolTip = _tooltipOff;
+            _button.OnClick += e => Toggle();
+
         }
 
         void Update()
@@ -108,10 +105,10 @@ namespace kalculator
             else
             {
                 if (InputLockManager.GetControlLock("kalculator") == (BLOCK_ALL_CONTROLS))
-                { 
-                    InputLockManager.RemoveControlLock("kalculator"); 
+                {
+                    InputLockManager.RemoveControlLock("kalculator");
                 }
-            }                      
+            }
             if (Input.GetKey(KeyCode.LeftAlt) && Input.GetKeyDown(_keybind))
             {
                 Toggle();
@@ -126,38 +123,45 @@ namespace kalculator
                 _button.Destroy();
             }
         }
-                
+
 
         void OnGUI()
         {
 #if DEBUG
             GUILayout.Label(GetCalcInternalsInfo());//DEBUG.
-#endif          
+#endif
+            GUISkin _defGuiSkin = GUI.skin;
             if (_visible)
             {
+                GUI.skin = _useKspSkin ? HighLogic.Skin : _defGuiSkin;
                 _calcsize = GUI.Window(GUIUtility.GetControlID(0, FocusType.Passive), _calcsize, CalcWindow, "Kalculator");
             }
+            GUI.skin = _defGuiSkin;
         }
 
         void CalcWindow(int windowID)
         {
             GUI.SetNextControlName("kalculator");
-            GUI.Box(new Rect(10, 20, _calcsize.width - 20, 43), "");
             int tmpSize = GUI.skin.GetStyle("Label").fontSize;
             GUI.skin.GetStyle("TextField").fontSize = _displayfontsize;
-            GUI.TextField(new Rect(10, 20, _calcsize.width - 20, 43), _currentnumber);
+            GUILayout.TextField(_currentnumber);
             GUI.skin.GetStyle("TextField").fontSize = tmpSize;
-
             tmpSize = GUI.skin.GetStyle("Label").fontSize;
             GUI.skin.GetStyle("Label").fontSize = _opfontsize;
-            GUI.Label(new Rect(260, 42, _calcsize.width - 20, 37), _optoperform);
+            GUILayout.Label(_optoperform);
             GUI.skin.GetStyle("Label").fontSize = tmpSize;
+            GUILayout.BeginVertical();
+            var _butttonOpts = new[] { GUILayout.Width(47f), GUILayout.ExpandWidth(false), GUILayout.Height(30f), GUILayout.ExpandHeight(false) };
+            var _butttonOpts2 = new[] { GUILayout.Width(40f), GUILayout.ExpandWidth(false), GUILayout.Height(30f), GUILayout.ExpandHeight(false) };
+            var _butzeroOpts = new[] { GUILayout.Width(98f), GUILayout.ExpandWidth(false), GUILayout.Height(30f), GUILayout.ExpandHeight(false) };
+            var _butbackOpts = new[] { GUILayout.Width(84f), GUILayout.ExpandWidth(false), GUILayout.Height(30f), GUILayout.ExpandHeight(false) };
 
-            if (GUI.Button(new Rect(8, 70, 47, 30), "C"))
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("C", _butttonOpts))
             {
                 ClearCalcData();
             }
-            if (GUI.Button(new Rect(61, 70, 47, 30), "+/-"))
+            if (GUILayout.Button("+/-", _butttonOpts))
             {
                 if (_currentnumber != "0")
                 {
@@ -175,122 +179,152 @@ namespace kalculator
                 else if (!_isfirst)
                     _registers[1] = -_registers[1];
             }
-
-            if (GUI.Button(new Rect(165, 141, 47, 30), "+"))
-                OperatorPressed("+");
-            if (GUI.Button(new Rect(165, 106, 47, 30), "-"))
-                OperatorPressed("-");
-            if (GUI.Button(new Rect(113, 70, 47, 30), "/"))
+            if (GUILayout.Button("/", _butttonOpts))
                 OperatorPressed("/");
-            if (GUI.Button(new Rect(165, 70, 47, 30), "x"))
+            if (GUILayout.Button("x", _butttonOpts))
                 OperatorPressed("x");
-            if (GUI.Button(new Rect(8, 248, 47, 30), "√x"))
-                OperatorPressed("√x");
-            if (GUI.Button(new Rect(61, 248, 47, 30), "x^2"))
-                OperatorPressed("x^2");
-            if (GUI.Button(new Rect(113, 248, 47, 30), "1/x"))
-                OperatorPressed("1/x");
-            if (GUI.Button(new Rect(165, 248, 47, 30), "x^y"))
-                OperatorPressed("x^y");
-            if (GUI.Button(new Rect(8, 284, 47, 30), "3√x"))
-                OperatorPressed("3√x");
-            if (GUI.Button(new Rect(61, 284, 47, 30), "x^3"))
-                OperatorPressed("x^3");
-            if (GUI.Button(new Rect(113, 284, 47, 30), "%"))
-                OperatorPressed("%");
-            if (GUI.Button(new Rect(165, 284, 47, 30), "y√x"))
-                OperatorPressed("y√x");
-            if (GUI.Button(new Rect(218, 70, 40, 30), "log"))
+            if (GUILayout.Button("log", _butttonOpts2))
                 OperatorPressed("log");
-            if (GUI.Button(new Rect(260, 70, 40, 30), "ln"))
+            if (GUILayout.Button("ln", _butttonOpts2))
                 OperatorPressed("ln");
-            if (GUI.Button(new Rect(218, 106, 40, 30), "10^x"))
-                OperatorPressed("10^x");
-            if (GUI.Button(new Rect(260, 106, 40, 30), "e^x"))
-                OperatorPressed("e^x");
-            if (GUI.Button(new Rect(218, 176, 40, 30), "sin"))
-                OperatorPressed("sin");
-            if (GUI.Button(new Rect(260, 176, 40, 30), "cos"))
-                OperatorPressed("cos");
-            if (GUI.Button(new Rect(218, 212, 40, 30), "tan"))
-                OperatorPressed("tan");
-            if (GUI.Button(new Rect(260, 212, 40, 30), "sinh"))
-                OperatorPressed("sinh");
-            if (GUI.Button(new Rect(218, 248, 40, 30), "cosh"))
-                OperatorPressed("cosh");
-            if (GUI.Button(new Rect(260, 248, 40, 30), "tanh"))
-                OperatorPressed("tanh");
-            if (GUI.Button(new Rect(218, 284, 40, 30), "asin"))
-                OperatorPressed("asin");
-            if (GUI.Button(new Rect(260, 284, 40, 30), "atan"))
-                OperatorPressed("atan");
-            if (GUI.Button(new Rect(218, 320, 40, 30), "acos"))
-                OperatorPressed("acos");
-            if (GUI.Button(new Rect(61, 320, 47, 30), "cot"))
-                OperatorPressed("cot");
-            if (GUI.Button(new Rect(113, 320, 47, 30), "sec"))
-                OperatorPressed("sec");
-            if (GUI.Button(new Rect(165, 320, 47, 30), "csc"))
-                OperatorPressed("csc");
-            
-            if (GUI.Button(new Rect(8, 320, 47, 30), "!"))
-                OperatorPressed("!");
-            
-            if (GUI.Button(new Rect(8, 176, 47, 30), "1"))
-                AppendNumber("1");
-            if (GUI.Button(new Rect(61, 176, 47, 30), "2"))
-                AppendNumber("2");
-            if (GUI.Button(new Rect(113, 176, 47, 30), "3"))
-                AppendNumber("3");
-            if (GUI.Button(new Rect(8, 141, 47, 30), "4"))
-                AppendNumber("4");
-            if (GUI.Button(new Rect(61, 141, 47, 30), "5"))
-                AppendNumber("5");
-            if (GUI.Button(new Rect(113, 141, 47, 30), "6"))
-                AppendNumber("6");
-            if (GUI.Button(new Rect(8, 106, 47, 30), "7"))
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("7", _butttonOpts))
                 AppendNumber("7");
-            if (GUI.Button(new Rect(61, 106, 47, 30), "8"))
+            if (GUILayout.Button("8", _butttonOpts))
                 AppendNumber("8");
-            if (GUI.Button(new Rect(113, 106, 47, 30), "9"))
+            if (GUILayout.Button("9", _butttonOpts))
                 AppendNumber("9");
-            if (GUI.Button(new Rect(8, 212, 100, 30), "0"))
+            if (GUILayout.Button("-", _butttonOpts))
+                OperatorPressed("-");
+            if (GUILayout.Button("10^x", _butttonOpts2))
+                OperatorPressed("10^x");
+            if (GUILayout.Button("e^x", _butttonOpts2))
+                OperatorPressed("e^x");
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("4", _butttonOpts))
+                AppendNumber("4");
+            if (GUILayout.Button("5", _butttonOpts))
+                AppendNumber("5");
+            if (GUILayout.Button("6", _butttonOpts))
+                AppendNumber("6");
+            if (GUILayout.Button("+", _butttonOpts))
+                OperatorPressed("+");
+            if (GUILayout.Button("π", _butttonOpts2))
+            {
+                if (_isfirst)
+                {
+                    ClearCalcData();
+                    AppendNumber(Math.PI.ToString());
+                }
+                else
+                {
+                    AppendNumber(Math.PI.ToString());
+                }
+            }
+            if (GUILayout.Button("e", _butttonOpts2))
+            {
+                if (_isfirst)
+                {
+                    ClearCalcData();
+                    AppendNumber(Math.E.ToString());
+                }
+                else
+                {
+                    AppendNumber(Math.E.ToString());
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("1", _butttonOpts))
+                AppendNumber("1");
+            if (GUILayout.Button("2", _butttonOpts))
+                AppendNumber("2");
+            if (GUILayout.Button("3", _butttonOpts))
+                AppendNumber("3");
+            GUI.contentColor = Color.green;
+            if (GUILayout.Button("=", _butttonOpts))
+            {
+                PerformOperation();
+            }
+            GUI.contentColor = Color.white;
+            if (GUILayout.Button("sin", _butttonOpts2))
+                OperatorPressed("sin");
+            if (GUILayout.Button("cos", _butttonOpts2))
+                OperatorPressed("cos");
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("0", _butzeroOpts))
                 AppendNumber("0");
-
-            if (GUI.Button(new Rect(218, 141, 40, 30), "π"))
-            {
-                if (_isfirst)
-                {
-                    ClearCalcData();
-                    AppendNumber(Math.PI.ToString());
-                }
-                else
-                {
-                    AppendNumber(Math.PI.ToString());
-                }
-            }
-            if (GUI.Button(new Rect(260, 141, 40, 30), "e"))
-            {
-                if (_isfirst)
-                {
-                    ClearCalcData();
-                    AppendNumber(Math.E.ToString());
-                }
-                else
-                {
-                    AppendNumber(Math.E.ToString());
-                }
-            }
-
-            if (GUI.Button(new Rect(113, 212, 47, 30), "."))
+            if (GUILayout.Button(".", _butttonOpts))
             {
                 if (!_currentnumber.Contains(".") || _clearscreen)
                     AppendNumber(".");
             }
+            if (GUILayout.Button("acos", _butttonOpts))
+                OperatorPressed("acos");
+            if (GUILayout.Button("tan", _butttonOpts2))
+                OperatorPressed("tan");
+            if (GUILayout.Button("sinh", _butttonOpts2))
+                OperatorPressed("sinh");
+            GUILayout.EndHorizontal();
 
-            if (GUI.Button(new Rect(165, 176, 47, 66), "="))
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("√x", _butttonOpts))
+                OperatorPressed("√x");
+            if (GUILayout.Button("x^2", _butttonOpts))
+                OperatorPressed("x^2");
+            if (GUILayout.Button("1/x", _butttonOpts))
+                OperatorPressed("1/x");
+            if (GUILayout.Button("x^y", _butttonOpts))
+                OperatorPressed("x^y");
+            if (GUILayout.Button("cosh", _butttonOpts2))
+                OperatorPressed("cosh");
+            if (GUILayout.Button("tanh", _butttonOpts2))
+                OperatorPressed("tanh");
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("cot", _butttonOpts))
+                OperatorPressed("cot");
+            if (GUILayout.Button("sec", _butttonOpts))
+                OperatorPressed("sec");
+
+            if (GUILayout.Button("%", _butttonOpts))
+                OperatorPressed("%");
+            if (GUILayout.Button("y√x", _butttonOpts))
+                OperatorPressed("y√x");
+            if (GUILayout.Button("asin", _butttonOpts2))
+                OperatorPressed("asin");
+            if (GUILayout.Button("atan", _butttonOpts2))
+                OperatorPressed("atan");
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("MS", _butttonOpts))
+                StoreMem();
+            if (GUILayout.Button("MR", _butttonOpts))
+                RestoreMem();
+            if (GUILayout.Button("csc", _butttonOpts))
+                OperatorPressed("csc");
+            if (GUILayout.Button("!", _butttonOpts))
+                OperatorPressed("!");
+            if (GUILayout.Button("<--", _butbackOpts))
             {
-                PerformOperation();
+                RemoveNumber();
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.EndVertical();
+
+            if (GUI.Button(new Rect(20f, 2f, 22f, 16f), "S"))
+            {
+                _useKspSkin = !_useKspSkin;
             }
 
             if (GUI.Button(new Rect(2f, 2f, 13f, 13f), "X"))
@@ -357,14 +391,6 @@ namespace kalculator
                 case "y√x":
                     if (_currentnumber != "NaN")
                         _currentnumber = (_registers[0] != 0) ? (Math.Pow(Convert.ToDouble(_registers[0]), 1 / Convert.ToDouble(_registers[1])).ToString()) : "NaN";
-                    break;
-                case "x^3":
-                    if (_currentnumber != "NaN")
-                        _currentnumber = (_registers[0] != 0) ? (Math.Pow(Convert.ToDouble(_registers[0]), 3)).ToString() : "NaN";
-                    break;
-                case "3√x":
-                    if (_currentnumber != "NaN")
-                        _currentnumber = (_registers[0] != 0) ? (Math.Pow(Convert.ToDouble(_registers[0]), 1 / 3.0)).ToString() : "NaN";
                     break;
                 case "%":
                     if (_currentnumber != "NaN")
@@ -443,7 +469,7 @@ namespace kalculator
                 default:
                     Debug.LogError("Unknown operation: " + _optoperform);
                     break;
-                    
+
             }
             StoreCurrentNumberInReg(0);
             _isfirst = true;
@@ -458,10 +484,19 @@ namespace kalculator
         private void AppendNumber(string s)
         {
             if ((_currentnumber == "0") || _clearscreen)
-                _currentnumber = (s == ".") ? "0." : s;
+                _currentnumber = s == "." ? "0." : s;
             else
                 if (_currentnumber.Length < _maxdigits)
                     _currentnumber += s;
+
+            if (_clearscreen)
+                _clearscreen = false;
+            StoreCurrentNumberInReg(_isfirst ? 0 : 1);
+        }
+
+        private void RemoveNumber()
+        {
+            _currentnumber = (_currentnumber.Length == 1) ? "0" : _currentnumber.Remove(_currentnumber.Length - 1);
 
             if (_clearscreen)
                 _clearscreen = false;
@@ -509,66 +544,72 @@ namespace kalculator
 
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
                 PerformOperation();
+            if (Input.GetKeyDown(KeyCode.Backspace))
+                RemoveNumber();
         }
-        
+
         private void LoadSettings()
         {
             KSPLog.print("[kalculator.dll] Loading Config...");
-            KSP.IO.PluginConfiguration configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
-            configfile.load();
+            KSP.IO.PluginConfiguration _configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
+            _configfile.load();
 
-            _calcsize = configfile.GetValue<Rect>("windowpos");
-            _keybind = configfile.GetValue<string>("keybind");
-            _versionlastrun = configfile.GetValue<string>("version");
-            
+            _calcsize = _configfile.GetValue("windowpos", new Rect(360, 20, 308, 365));
+            _keybind = _configfile.GetValue("keybind", "k");
+            _versionlastrun = _configfile.GetValue<string>("version");
+            _useKspSkin = _configfile.GetValue<bool>("KSPSkin", false);
+
             KSPLog.print("[kalculator.dll] Config Loaded Successfully");
         }
 
         private void SaveSettings()
         {
             KSPLog.print("[kalculator.dll] Saving Config...");
-            KSP.IO.PluginConfiguration configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
+            KSP.IO.PluginConfiguration _configfile = KSP.IO.PluginConfiguration.CreateForType<Kalculator>();
 
-            configfile.SetValue("windowpos", _calcsize);
-            configfile.SetValue("keybind", _keybind);
-            configfile.SetValue("version", _version);
-            
-            configfile.save();
-            KSPLog.print("[kalculator.dll] Config Saved ");
+            _configfile.SetValue("windowpos", _calcsize);
+            _configfile.SetValue("keybind", _keybind);
+            _configfile.SetValue("version", _version);
+            _configfile.SetValue("KSPSkin", _useKspSkin);
+
+            _configfile.save();
+            print("[kalculator.dll] Config Saved ");
         }
-        
-        private void CheckDefaults()
+
+        private void StoreMem()
         {
-            if (_calcsize == new Rect(0, 0, 0, 0))
-            {
-                _calcsize = new Rect(360, 20, 308, 358);
-            }
-            if (_keybind == null)
-            {
-                _keybind = "k";
-            }
+            _mem = _currentnumber;
         }
-        
+
+        private void RestoreMem()
+        {
+            _currentnumber = _mem;
+            if (_clearscreen)
+                _clearscreen = false;
+            StoreCurrentNumberInReg(_isfirst ? 0 : 1);
+
+        }
+
         private void Toggle()
         {
             if (_visible == true)
             {
                 _visible = false;
-                _button.TexturePath = _btexture_off;
-                _button.ToolTip = _tooltipoff;
+                _button.TexturePath = _btextureOff;
+                _button.ToolTip = _tooltipOff;
             }
             else
             {
                 _visible = true;
-                _button.TexturePath = _btexture_on;
-                _button.ToolTip = _tooltipon;
+                _button.TexturePath = _btextureOn;
+                _button.ToolTip = _tooltipOn;
             }
         }
 
         private void VersionCheck()
         {
             _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-            KSPLog.print("kalculator.dll version: " + _version);
+            print("kalculator.dll version: " + _version);
             if ((_version != _versionlastrun) && (KSP.IO.File.Exists<Kalculator>("config.xml")))
             {
                 KSP.IO.File.Delete<Kalculator>("config.xml");
